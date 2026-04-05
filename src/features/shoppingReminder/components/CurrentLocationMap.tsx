@@ -5,19 +5,33 @@ import {
   Circle,
   CircleMarker,
   MapContainer,
+  Marker,
+  Popup,
   TileLayer,
   useMap,
+  useMapEvents,
 } from "react-leaflet";
 
 import { Location } from "@/features/shoppingReminder/hooks/useLocation";
 
+export type ReminderMapItem = {
+  id: number;
+  title: string;
+  placeName: string;
+  radiusMeters: number;
+  target: Location;
+};
+
 type CurrentLocationMapProps = {
   location: Location | null;
+  reminders: ReminderMapItem[];
+  selectedLocation: Location | null;
+  onSelectLocation: (location: Location) => void;
 };
 
 const DEFAULT_CENTER: [number, number] = [35.681236, 139.767125];
 
-function RecenterMap({ location }: CurrentLocationMapProps) {
+function RecenterMap({ location }: Pick<CurrentLocationMapProps, "location">) {
   const map = useMap();
 
   useEffect(() => {
@@ -33,7 +47,27 @@ function RecenterMap({ location }: CurrentLocationMapProps) {
   return null;
 }
 
-export function CurrentLocationMap({ location }: CurrentLocationMapProps) {
+function MapTapHandler({
+  onSelectLocation,
+}: Pick<CurrentLocationMapProps, "onSelectLocation">) {
+  useMapEvents({
+    click(event) {
+      onSelectLocation({
+        lat: event.latlng.lat,
+        lng: event.latlng.lng,
+      });
+    },
+  });
+
+  return null;
+}
+
+export function CurrentLocationMap({
+  location,
+  reminders,
+  selectedLocation,
+  onSelectLocation,
+}: CurrentLocationMapProps) {
   const center: [number, number] = location
     ? [location.lat, location.lng]
     : DEFAULT_CENTER;
@@ -51,6 +85,7 @@ export function CurrentLocationMap({ location }: CurrentLocationMapProps) {
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
         <RecenterMap location={location} />
+        <MapTapHandler onSelectLocation={onSelectLocation} />
 
         {location ? (
           <>
@@ -75,6 +110,36 @@ export function CurrentLocationMap({ location }: CurrentLocationMapProps) {
               radius={10}
             />
           </>
+        ) : null}
+
+        {reminders.map((reminder) => (
+          <Marker
+            key={reminder.id}
+            position={[reminder.target.lat, reminder.target.lng]}
+          >
+            <Popup>
+              <div className="space-y-1">
+                <p className="text-sm font-semibold">{reminder.title}</p>
+                <p className="text-xs text-stone-600">{reminder.placeName}</p>
+                <p className="text-xs text-stone-600">
+                  判定半径: {reminder.radiusMeters}m
+                </p>
+              </div>
+            </Popup>
+          </Marker>
+        ))}
+
+        {selectedLocation ? (
+          <CircleMarker
+            center={[selectedLocation.lat, selectedLocation.lng]}
+            pathOptions={{
+              color: "#0369a1",
+              fillColor: "#38bdf8",
+              fillOpacity: 0.95,
+              weight: 3,
+            }}
+            radius={9}
+          />
         ) : null}
       </MapContainer>
     </div>
