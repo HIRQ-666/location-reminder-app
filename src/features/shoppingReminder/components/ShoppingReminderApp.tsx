@@ -87,6 +87,17 @@ const calculateDistanceMeters = (from: Location, to: Location) => {
   return 2 * earthRadius * Math.asin(Math.sqrt(haversine));
 };
 
+const parseDraftLocation = (draft: ReminderDraft): Location | null => {
+  const lat = Number(draft.targetLat);
+  const lng = Number(draft.targetLng);
+
+  if (Number.isNaN(lat) || Number.isNaN(lng)) {
+    return null;
+  }
+
+  return { lat, lng };
+};
+
 export function ShoppingReminderApp() {
   const { location, error, isLocating } = useLocation();
   const [draft, setDraft] = useState<ReminderDraft>(INITIAL_DRAFT);
@@ -111,6 +122,8 @@ export function ShoppingReminderApp() {
     [location, reminders]
   );
 
+  const selectedDraftLocation = useMemo(() => parseDraftLocation(draft), [draft]);
+
   const handleChange = (
     event: ChangeEvent<HTMLInputElement | HTMLTextAreaElement>
   ) => {
@@ -131,6 +144,14 @@ export function ShoppingReminderApp() {
       ...current,
       targetLat: String(location.lat),
       targetLng: String(location.lng),
+    }));
+  };
+
+  const handleSelectMapLocation = (nextLocation: Location) => {
+    setDraft((current) => ({
+      ...current,
+      targetLat: nextLocation.lat.toFixed(6),
+      targetLng: nextLocation.lng.toFixed(6),
     }));
   };
 
@@ -248,11 +269,16 @@ export function ShoppingReminderApp() {
             </div>
 
             <div className="mt-5 grid gap-4 sm:mt-6">
-              <CurrentLocationMap location={location} />
+              <CurrentLocationMap
+                location={location}
+                reminders={reminders}
+                selectedLocation={selectedDraftLocation}
+                onSelectLocation={handleSelectMapLocation}
+              />
               <p className="text-sm leading-6 text-stone-500">
-                {location
-                  ? "現在地を中心に地図を表示しています。移動するとマップも追従します。"
-                  : "位置情報が取得できると、現在地のマーカーと周辺エリアが表示されます。"}
+                {selectedDraftLocation
+                  ? `地図で選択中の地点: ${formatCoordinate(selectedDraftLocation.lat)}, ${formatCoordinate(selectedDraftLocation.lng)}`
+                  : "地図をタップすると、新しい TODO の場所候補を選べます。登録済み TODO はマーカーで表示されます。"}
               </p>
             </div>
           </section>
@@ -350,6 +376,10 @@ export function ShoppingReminderApp() {
                   />
                 </label>
               </div>
+
+              <p className="rounded-2xl bg-sky-50 px-4 py-3 text-sm leading-6 text-sky-900">
+                地図をタップすると、緯度と経度にその地点が自動入力されます。既存の TODO は地図上のマーカーから確認できます。
+              </p>
 
               <label className="grid gap-2">
                 <span className="text-sm font-medium text-stone-700">
