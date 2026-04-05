@@ -10,10 +10,12 @@ export type Location = {
 export const useLocation = () => {
   const [location, setLocation] = useState<Location | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isLocating, setIsLocating] = useState(true);
 
   useEffect(() => {
     if (!navigator.geolocation) {
-      setError("このブラウザは位置情報取得に対応していません。");
+      setError("このブラウザは位置情報の取得に対応していません。");
+      setIsLocating(false);
       return;
     }
 
@@ -24,9 +26,25 @@ export const useLocation = () => {
           lng: position.coords.longitude,
         });
         setError(null);
+        setIsLocating(false);
       },
       (err) => {
-        setError(err.message);
+        switch (err.code) {
+          case err.PERMISSION_DENIED:
+            setError("位置情報の利用が許可されていません。ブラウザ設定を確認してください。");
+            break;
+          case err.POSITION_UNAVAILABLE:
+            setError("位置情報を取得できませんでした。電波状況や端末設定をご確認ください。");
+            break;
+          case err.TIMEOUT:
+            setError("位置情報の取得がタイムアウトしました。");
+            break;
+          default:
+            setError("位置情報の取得中に不明なエラーが発生しました。");
+            break;
+        }
+
+        setIsLocating(false);
       },
       {
         enableHighAccuracy: true,
@@ -40,5 +58,5 @@ export const useLocation = () => {
     };
   }, []);
 
-  return { location, error };
+  return { location, error, isLocating };
 };
